@@ -1,42 +1,54 @@
 use rand::{thread_rng, Rng};
 use std::fs;
 
+#[derive(Clone)]
 struct Neibour {
     rel: (i32, i32),
     sup: SuperPos,
 }
 
+impl Neibour {
+    fn from(rel: (i32, i32), sup: SuperPos) -> Neibour {
+        Neibour { rel, sup }
+    }
+}
+
 #[derive(Clone)]
 struct TileProp {
-    //conditions: Vec<(SuperPos)>
-    up_superpos: SuperPos,
-    down_superpos: SuperPos,
-    left_superpos: SuperPos,
-    right_superpos: SuperPos,
+    conditions: Vec<Neibour>,
 }
 
 impl TileProp {
     fn new() -> TileProp {
-        TileProp {
-            up_superpos: SuperPos::tr(0),
-            down_superpos: SuperPos::tr(0),
-            left_superpos: SuperPos::tr(0),
-            right_superpos: SuperPos::tr(0),
-        }
+        TileProp { conditions: vec![] }
     }
     fn from(
-        up: Vec<usize>,
-        down: Vec<usize>,
-        left: Vec<usize>,
-        right: Vec<usize>,
+        rels: Vec<Vec<usize>>, //8 списков возможных соседей клетки в направлениях
+        //(-1,-1) ( 0,-1) ( 1,-1)
+        //(-1, 0)         ( 1, 0)
+        //(-1, 1) ( 0, 1) ( 1, 1)
         tile_types: usize,
     ) -> TileProp {
-        TileProp {
-            up_superpos: SuperPos::from(tile_types, up),
-            down_superpos: SuperPos::from(tile_types, down),
-            left_superpos: SuperPos::from(tile_types, left),
-            right_superpos: SuperPos::from(tile_types, right),
-        }
+        let mut tp = TileProp::new();
+        tp.conditions.push(Neibour::from(
+            (-1, -1),
+            SuperPos::from(tile_types, &rels[0]),
+        ));
+        tp.conditions
+            .push(Neibour::from((0, -1), SuperPos::from(tile_types, &rels[1])));
+        tp.conditions
+            .push(Neibour::from((1, -1), SuperPos::from(tile_types, &rels[2])));
+        tp.conditions
+            .push(Neibour::from((-1, 0), SuperPos::from(tile_types, &rels[3])));
+        tp.conditions
+            .push(Neibour::from((1, 0), SuperPos::from(tile_types, &rels[4])));
+        tp.conditions
+            .push(Neibour::from((-1, 1), SuperPos::from(tile_types, &rels[5])));
+        tp.conditions
+            .push(Neibour::from((0, 1), SuperPos::from(tile_types, &rels[6])));
+        tp.conditions
+            .push(Neibour::from((1, 1), SuperPos::from(tile_types, &rels[7])));
+        tp
     }
 }
 
@@ -59,28 +71,29 @@ fn read_file() -> (Vec<TileProp>, Vec<String>) {
         .map(|s| String::from(s))
         .collect::<Vec<String>>();
 
-    let tile_types: usize = strings.len() / 7 + 1;
+    let tile_types: usize = strings.len() / 11 + 1;
     let mut tiles_prop: Vec<TileProp> = vec![TileProp::new(); tile_types];
 
     let mut texture_ref: String;
     let mut textures_ref: Vec<String> = vec![];
-    let mut up: Vec<usize>;
-    let mut down: Vec<usize>;
-    let mut left: Vec<usize>;
-    let mut right: Vec<usize>;
-
+    let mut rels: Vec<Vec<usize>>;
     for v in 0..tile_types {
-        let _ = match (&strings[v * 7][..]).parse::<usize>() {
+        let _ = match (&strings[v * 11][..]).parse::<usize>() {
             Ok(a) => a,
             Err(_) => panic!("failed to parce file"),
         };
-        //texture_ref = String::from("../");
-        texture_ref = strings[v * 7 + 1].clone();
-        up = string_to_vec_of_usize(&strings[v * 7 + 2]);
-        down = string_to_vec_of_usize(&strings[v * 7 + 3]);
-        left = string_to_vec_of_usize(&strings[v * 7 + 4]);
-        right = string_to_vec_of_usize(&strings[v * 7 + 5]);
-        tiles_prop[v] = TileProp::from(up, down, left, right, tile_types);
+        texture_ref = strings[v * 11 + 1].clone();
+        rels = vec![vec![]; 8];
+        rels[0] = string_to_vec_of_usize(&strings[v * 11 + 2]);
+        rels[1] = string_to_vec_of_usize(&strings[v * 11 + 3]);
+        rels[2] = string_to_vec_of_usize(&strings[v * 11 + 4]);
+        rels[3] = string_to_vec_of_usize(&strings[v * 11 + 5]);
+        rels[4] = string_to_vec_of_usize(&strings[v * 11 + 6]);
+        rels[5] = string_to_vec_of_usize(&strings[v * 11 + 7]);
+        rels[6] = string_to_vec_of_usize(&strings[v * 11 + 8]);
+        rels[7] = string_to_vec_of_usize(&strings[v * 11 + 9]);
+
+        tiles_prop[v] = TileProp::from(rels, tile_types);
         textures_ref.push(texture_ref);
     }
     (tiles_prop, textures_ref)
@@ -112,7 +125,7 @@ impl SuperPos {
             self.cont[i] = self.cont[i] && s.cont[i];
         }
     }
-    fn from(n: usize, l: Vec<usize>) -> SuperPos {
+    fn from(n: usize, l: &Vec<usize>) -> SuperPos {
         let mut cont = vec![false; n];
         for i in 0..l.len() {
             cont[l[i]] = true;
@@ -243,47 +256,27 @@ impl Wave {
         self.tiles[x][y].sup.cont = vec![false; self.tile_types];
         self.tiles[x][y].sup.cont[typ] = true;
     }
-    fn update_around(&mut self, x: usize, y: usize) -> [bool; 4] {
-        let mut is_updated: [bool; 4] = [true; 4];
-        if x as i32 - 1 >= 0 {
-            let mut suppos = SuperPos::fs(self.tile_types);
-            for i in 0..self.tile_types {
-                if self.tiles[x][y].sup.cont[i] == true {
-                    suppos.or(&self.tiles_prop[i].left_superpos);
+    fn update_around(&mut self, x: usize, y: usize) -> [bool; 8] {
+        let mut is_updated: [bool; 8] = [true; 8];
+        let mut X;
+        let mut Y;
+        for r in 0..8 {
+            if 0 <= x as i32 + self.tiles_prop[0].conditions[r].rel.0
+                && x as i32 + self.tiles_prop[0].conditions[r].rel.0 < self.x_size as i32
+                && 0 <= y as i32 + self.tiles_prop[0].conditions[r].rel.1
+                && y as i32 + self.tiles_prop[0].conditions[r].rel.1 < self.y_size as i32
+            {
+                let mut suppos = SuperPos::fs(self.tile_types);
+                for i in 0..self.tile_types {
+                    if self.tiles[x][y].sup.cont[i] == true {
+                        suppos.or(&self.tiles_prop[i].conditions[r].sup);
+                    }
                 }
+                X = (x as i32 + self.tiles_prop[0].conditions[r].rel.0) as usize;
+                Y = (y as i32 + self.tiles_prop[0].conditions[r].rel.1) as usize;
+                is_updated[r] = self.tiles[X][Y].sup.contains(&suppos);
+                self.tiles[X][Y].sup.and(&suppos);
             }
-            is_updated[2] = self.tiles[x - 1][y].sup.contains(&suppos);
-            self.tiles[x - 1][y].sup.and(&suppos);
-        }
-        if x + 1 < self.x_size {
-            let mut suppos = SuperPos::fs(self.tile_types);
-            for i in 0..self.tile_types {
-                if self.tiles[x][y].sup.cont[i] == true {
-                    suppos.or(&self.tiles_prop[i].right_superpos);
-                }
-            }
-            is_updated[3] = self.tiles[x + 1][y].sup.contains(&suppos);
-            self.tiles[x + 1][y].sup.and(&suppos);
-        }
-        if y as i32 - 1 >= 0 {
-            let mut suppos = SuperPos::fs(self.tile_types);
-            for i in 0..self.tile_types {
-                if self.tiles[x][y].sup.cont[i] == true {
-                    suppos.or(&self.tiles_prop[i].up_superpos);
-                }
-            }
-            is_updated[0] = self.tiles[x][y - 1].sup.contains(&suppos);
-            self.tiles[x][y - 1].sup.and(&suppos);
-        }
-        if y + 1 < self.y_size {
-            let mut suppos = SuperPos::fs(self.tile_types);
-            for i in 0..self.tile_types {
-                if self.tiles[x][y].sup.cont[i] == true {
-                    suppos.or(&self.tiles_prop[i].down_superpos);
-                }
-            }
-            is_updated[1] = self.tiles[x][y + 1].sup.contains(&suppos);
-            self.tiles[x][y + 1].sup.and(&suppos);
         }
         is_updated
     }
@@ -323,23 +316,57 @@ impl Wave {
                         self.tiles[i][j].ent.unrev += 1;
                     }
                 }
+                if i as i32 - 1 >= 0 && j as i32 - 1 >= 0 {
+                    if self.tiles[i - 1][j].ent.pos != 1 {
+                        self.tiles[i][j].ent.unrev += 1;
+                    }
+                }
+                if i + 1 < self.x_size && j + 1 < self.y_size {
+                    if self.tiles[i + 1][j].ent.pos != 1 {
+                        self.tiles[i][j].ent.unrev += 1;
+                    }
+                }
+                if i + 1 < self.x_size && j as i32 - 1 >= 0 {
+                    if self.tiles[i][j - 1].ent.pos != 1 {
+                        self.tiles[i][j].ent.unrev += 1;
+                    }
+                }
+                if i as i32 - 1 >= 0 && j + 1 < self.y_size {
+                    if self.tiles[i][j + 1].ent.pos != 1 {
+                        self.tiles[i][j].ent.unrev += 1;
+                    }
+                }
             }
         }
         false
     }
     fn update_from(&mut self, x: usize, y: usize) {
-        let ups = self.update_around(x, y);
+        let ups = self.update_around(x, y); //(-1,-1) ( 0,-1) ( 1,-1)
+                                            //(-1, 0)         ( 1, 0)
+                                            //(-1, 1) ( 0, 1) ( 1, 1)
         if !ups[0] {
-            self.update_from(x, y - 1);
+            self.update_from(x - 1, y - 1);
         }
         if !ups[1] {
-            self.update_from(x, y + 1);
+            self.update_from(x, y - 1);
         }
         if !ups[2] {
-            self.update_from(x - 1, y);
+            self.update_from(x + 1, y - 1);
         }
         if !ups[3] {
+            self.update_from(x - 1, y);
+        }
+        if !ups[4] {
             self.update_from(x + 1, y);
+        }
+        if !ups[5] {
+            self.update_from(x - 1, y + 1);
+        }
+        if !ups[6] {
+            self.update_from(x, y + 1);
+        }
+        if !ups[7] {
+            self.update_from(x + 1, y + 1);
         }
     }
     fn observe(&mut self) -> Option<(usize, usize)> {
