@@ -1,13 +1,12 @@
 use rand::{thread_rng, Rng};
-use raylib::prelude::*;
+use raylib::{ffi::Texture2D, prelude::*};
 use std::fs;
 
 #[allow(dead_code)]
 #[derive(Clone)]
 struct TileProp {
-    id: usize,               //id
-    color: (u8, u8, u8, u8), //Цвет тайла
-    up: Vec<usize>,          //possible neibors in directions
+    id: usize,      //id
+    up: Vec<usize>, //possible neibors in directions
     down: Vec<usize>,
     left: Vec<usize>,
     right: Vec<usize>,
@@ -21,7 +20,6 @@ impl TileProp {
     fn new() -> TileProp {
         TileProp {
             id: usize::MAX,
-            color: (0, 0, 0, 0),
             up: vec![],
             down: vec![],
             left: vec![],
@@ -34,7 +32,6 @@ impl TileProp {
     }
     fn from(
         id: usize,
-        color: (u8, u8, u8, u8),
         up: Vec<usize>,
         down: Vec<usize>,
         left: Vec<usize>,
@@ -43,7 +40,6 @@ impl TileProp {
     ) -> TileProp {
         TileProp {
             id,
-            color,
             up: up.clone(),
             down: down.clone(),
             left: left.clone(),
@@ -66,23 +62,8 @@ fn string_to_vec_of_usize(s: &String) -> Vec<usize> {
         .collect::<Vec<usize>>()
 }
 
-fn string_to_color(s: &String) -> (u8, u8, u8, u8) {
-    let cls = s
-        .split(' ')
-        .into_iter()
-        .map(|s| match s.parse::<u8>() {
-            Ok(a) => a,
-            Err(_) => panic!("failed to parce color"),
-        })
-        .collect::<Vec<u8>>();
-    if cls.len() != 4 {
-        panic!("wrong color format");
-    }
-    (cls[0], cls[1], cls[2], cls[3])
-}
-
-fn read_file() -> Vec<TileProp> {
-    let data: String = fs::read_to_string("../tiles-data.txt").expect("Unable to read file");
+fn read_file() -> (Vec<TileProp>, Vec<String>) {
+    let data: String = fs::read_to_string("tiles-data.txt").expect("Unable to read file");
     let strings = data.split('\n');
     let strings = strings.collect::<Vec<&str>>();
     let strings = strings
@@ -94,7 +75,8 @@ fn read_file() -> Vec<TileProp> {
     let mut tiles_prop: Vec<TileProp> = vec![TileProp::new(); tile_types];
 
     let mut id: usize;
-    let mut color: (u8, u8, u8, u8);
+    let mut texture_ref: String;
+    let mut textures_ref: Vec<String> = vec![];
     let mut up: Vec<usize>;
     let mut down: Vec<usize>;
     let mut left: Vec<usize>;
@@ -105,14 +87,15 @@ fn read_file() -> Vec<TileProp> {
             Ok(a) => a,
             Err(_) => panic!("failed to parce file"),
         };
-        color = string_to_color(&strings[v * 7 + 1]);
+        texture_ref = strings[v * 7 + 1].clone();
         up = string_to_vec_of_usize(&strings[v * 7 + 2]);
         down = string_to_vec_of_usize(&strings[v * 7 + 3]);
         left = string_to_vec_of_usize(&strings[v * 7 + 4]);
         right = string_to_vec_of_usize(&strings[v * 7 + 5]);
-        tiles_prop[v] = TileProp::from(id, color, up, down, left, right, tile_types);
+        tiles_prop[v] = TileProp::from(id, up, down, left, right, tile_types);
+        textures_ref.push(texture_ref);
     }
-    tiles_prop
+    (tiles_prop, textures_ref)
 }
 
 #[derive(Clone, PartialEq, Eq)]
@@ -205,6 +188,7 @@ pub struct Wave {
     tile_types: usize,
     tiles_prop: Vec<TileProp>,
     stack: Vec<WaveCopy>,
+    texture_ids: Vec<Vec<usize>>,
 }
 
 impl Wave {
@@ -216,12 +200,16 @@ impl Wave {
             tile_types,
             tiles_prop,
             stack: vec![],
+            texture_ids: vec![vec!(0; x_size); y_size],
         }
     }
-    pub fn new_load(x_size: usize, y_size: usize) -> Wave {
+    pub fn new_load(x_size: usize, y_size: usize) -> (Wave, Vec<String>) {
         let data = read_file();
-        let tile_types = data.len();
-        Wave::new(x_size, y_size, tile_types, data.clone())
+        let tile_types = data.0.len();
+        (
+            Wave::new(x_size, y_size, tile_types, data.0.clone()),
+            data.1,
+        )
     }
     fn load(&mut self, copy: WaveCopy) {
         self.tiles = copy.tiles;
@@ -231,22 +219,38 @@ impl Wave {
             tiles: self.tiles.clone(),
         }
     }
-    pub fn color(&self, x: usize, y: usize) -> Color {
-        let mut r: f32 = 0.0;
-        let mut g: f32 = 0.0;
-        let mut b: f32 = 0.0;
-        for i in 0..self.tile_types {
-            if self.tiles[x][y].sup.cont[i] == true {
-                r += self.tiles_prop[i].color.0 as f32;
-                g += self.tiles_prop[i].color.1 as f32;
-                b += self.tiles_prop[i].color.2 as f32;
+    fn set_ids(&mut self) {
+        for i in 0..self.x_size {
+            for j in 0..self.y_size {
+                for k in 0..self.tile_types {
+                    if self.tiles[i][j].sup.cont[k] == true {
+                        self.texture_ids[i][j] = k;
+                        break;
+                    }
+                }
             }
         }
-        r /= self.tiles[x][y].ent.pos as f32;
-        g /= self.tiles[x][y].ent.pos as f32;
-        b /= self.tiles[x][y].ent.pos as f32;
-        Color::from((r as u8, g as u8, b as u8, 255))
     }
+    pub fn get_texture_id(&self, x: usize, y: usize) -> usize {
+        self.texture_ids[x][y]
+    }
+    // Функция использовалась ранее для показания работы алгоритма с миксом цветов - где какие могут быть в виде их микса
+    // pub fn color(&self, x: usize, y: usize) -> Color {
+    //     let mut r: f32 = 0.0;
+    //     let mut g: f32 = 0.0;
+    //     let mut b: f32 = 0.0;
+    //     for i in 0..self.tile_types {
+    //         if self.tiles[x][y].sup.cont[i] == true {
+    //             r += self.tiles_prop[i].color.0 as f32;
+    //             g += self.tiles_prop[i].color.1 as f32;
+    //             b += self.tiles_prop[i].color.2 as f32;
+    //         }
+    //     }
+    //     r /= self.tiles[x][y].ent.pos as f32;
+    //     g /= self.tiles[x][y].ent.pos as f32;
+    //     b /= self.tiles[x][y].ent.pos as f32;
+    //     Color::from((r as u8, g as u8, b as u8, 255))
+    // }
     fn set_tile(&mut self, x: usize, y: usize, typ: usize) {
         self.tiles[x][y].sup.cont = vec![false; self.tile_types];
         self.tiles[x][y].sup.cont[typ] = true;
@@ -417,5 +421,6 @@ impl Wave {
                 }
             }
         }
+        self.set_ids();
     }
 }
