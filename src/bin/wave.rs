@@ -1,15 +1,14 @@
 use rand::{thread_rng, Rng};
-use raylib::{ffi::Texture2D, prelude::*};
 use std::fs;
 
-#[allow(dead_code)]
+struct Neibour {
+    rel: (i32, i32),
+    sup: SuperPos,
+}
+
 #[derive(Clone)]
 struct TileProp {
-    id: usize,      //id
-    up: Vec<usize>, //possible neibors in directions
-    down: Vec<usize>,
-    left: Vec<usize>,
-    right: Vec<usize>,
+    //conditions: Vec<(SuperPos)>
     up_superpos: SuperPos,
     down_superpos: SuperPos,
     left_superpos: SuperPos,
@@ -19,11 +18,6 @@ struct TileProp {
 impl TileProp {
     fn new() -> TileProp {
         TileProp {
-            id: usize::MAX,
-            up: vec![],
-            down: vec![],
-            left: vec![],
-            right: vec![],
             up_superpos: SuperPos::tr(0),
             down_superpos: SuperPos::tr(0),
             left_superpos: SuperPos::tr(0),
@@ -31,7 +25,6 @@ impl TileProp {
         }
     }
     fn from(
-        id: usize,
         up: Vec<usize>,
         down: Vec<usize>,
         left: Vec<usize>,
@@ -39,11 +32,6 @@ impl TileProp {
         tile_types: usize,
     ) -> TileProp {
         TileProp {
-            id,
-            up: up.clone(),
-            down: down.clone(),
-            left: left.clone(),
-            right: right.clone(),
             up_superpos: SuperPos::from(tile_types, up),
             down_superpos: SuperPos::from(tile_types, down),
             left_superpos: SuperPos::from(tile_types, left),
@@ -74,7 +62,6 @@ fn read_file() -> (Vec<TileProp>, Vec<String>) {
     let tile_types: usize = strings.len() / 7 + 1;
     let mut tiles_prop: Vec<TileProp> = vec![TileProp::new(); tile_types];
 
-    let mut id: usize;
     let mut texture_ref: String;
     let mut textures_ref: Vec<String> = vec![];
     let mut up: Vec<usize>;
@@ -83,16 +70,17 @@ fn read_file() -> (Vec<TileProp>, Vec<String>) {
     let mut right: Vec<usize>;
 
     for v in 0..tile_types {
-        id = match (&strings[v * 7][..]).parse() {
+        let _ = match (&strings[v * 7][..]).parse::<usize>() {
             Ok(a) => a,
             Err(_) => panic!("failed to parce file"),
         };
+        //texture_ref = String::from("../");
         texture_ref = strings[v * 7 + 1].clone();
         up = string_to_vec_of_usize(&strings[v * 7 + 2]);
         down = string_to_vec_of_usize(&strings[v * 7 + 3]);
         left = string_to_vec_of_usize(&strings[v * 7 + 4]);
         right = string_to_vec_of_usize(&strings[v * 7 + 5]);
-        tiles_prop[v] = TileProp::from(id, up, down, left, right, tile_types);
+        tiles_prop[v] = TileProp::from(up, down, left, right, tile_types);
         textures_ref.push(texture_ref);
     }
     (tiles_prop, textures_ref)

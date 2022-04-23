@@ -2,18 +2,15 @@ mod wave;
 use raylib::prelude::*;
 
 fn main() {
-    let x_size: usize = 15;
-    let y_size: usize = 15;
+    let x_size: usize = 30;
+    let y_size: usize = x_size;
 
     let ww = wave::Wave::new_load(x_size, y_size);
     let mut wave = ww.0;
     let textures_ref = ww.1;
     wave.reveal();
 
-    let (mut rl, thread) = raylib::init()
-        .size(x_size as i32 * 60, y_size as i32 * 60)
-        .title("WCF")
-        .build();
+    let (mut rl, thread) = raylib::init().size(900, 900).title("WCF").build();
 
     let mut textures: Vec<Texture2D> = vec![];
     for t in 0..textures_ref.len() {
@@ -35,10 +32,14 @@ fn main() {
         d.clear_background(Color::RED);
         for i in 0..x_size {
             for j in 0..y_size {
-                d.draw_texture(
+                d.draw_texture_ex(
                     &textures[wave.get_texture_id(i, j)],
-                    i as i32 * 60,
-                    j as i32 * 60,
+                    Vector2 {
+                        x: i as f32 / x_size as f32 * 900f32,
+                        y: j as f32 / y_size as f32 * 900f32,
+                    },
+                    0.0,
+                    15.0 / x_size as f32,
                     Color::WHITE,
                 );
             }
