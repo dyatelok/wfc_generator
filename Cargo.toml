@@ -6,6 +6,12 @@ edition = "2021"
 [[bin]]
 name = "wfc-generator"
 
+[[bin]]
+name = "simple-input"
+
+[[bin]]
+name = "load-backup"
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]

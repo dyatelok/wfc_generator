@@ -62,7 +62,7 @@ fn string_to_vec_of_usize(s: &String) -> Vec<usize> {
         .collect::<Vec<usize>>()
 }
 
-fn read_file() -> (Vec<TileProp>, Vec<String>) {
+fn read_file() -> (Vec<TileProp>, Vec<(String, usize)>) {
     let data: String = fs::read_to_string("tiles-data.txt").expect("Unable to read file");
     let strings = data.split('\n');
     let strings = strings.collect::<Vec<&str>>();
@@ -71,18 +71,25 @@ fn read_file() -> (Vec<TileProp>, Vec<String>) {
         .map(|s| String::from(s))
         .collect::<Vec<String>>();
 
-    let tile_types: usize = strings.len() / 11 + 1;
+    let tile_types: usize = strings.len() / 11;
     let mut tiles_prop: Vec<TileProp> = vec![TileProp::new(); tile_types];
+    let mut texture_split;
 
     let mut texture_ref: String;
-    let mut textures_ref: Vec<String> = vec![];
+    let mut texture_rot: usize;
+    let mut textures_ref: Vec<(String, usize)> = vec![];
     let mut rels: Vec<Vec<usize>>;
     for v in 0..tile_types {
         let _ = match (&strings[v * 11][..]).parse::<usize>() {
             Ok(a) => a,
             Err(_) => panic!("failed to parce file"),
         };
-        texture_ref = strings[v * 11 + 1].clone();
+        texture_split = strings[v * 11 + 1].split(' ').collect::<Vec<&str>>();
+        texture_ref = texture_split[0].to_string();
+        texture_rot = match texture_split[1].to_string().parse::<usize>() {
+            Ok(a) => a,
+            Err(_) => panic!("wrong texture rotation format"),
+        };
         rels = vec![vec![]; 8];
         rels[0] = string_to_vec_of_usize(&strings[v * 11 + 2]);
         rels[1] = string_to_vec_of_usize(&strings[v * 11 + 3]);
@@ -94,7 +101,7 @@ fn read_file() -> (Vec<TileProp>, Vec<String>) {
         rels[7] = string_to_vec_of_usize(&strings[v * 11 + 9]);
 
         tiles_prop[v] = TileProp::from(rels, tile_types);
-        textures_ref.push(texture_ref);
+        textures_ref.push((texture_ref, texture_rot));
     }
     (tiles_prop, textures_ref)
 }
@@ -204,7 +211,7 @@ impl Wave {
             texture_ids: vec![vec!(0; x_size); y_size],
         }
     }
-    pub fn new_load(x_size: usize, y_size: usize) -> (Wave, Vec<String>) {
+    pub fn new_load(x_size: usize, y_size: usize) -> (Wave, Vec<(String, usize)>) {
         let data = read_file();
         let tile_types = data.0.len();
         (
@@ -258,8 +265,8 @@ impl Wave {
     }
     fn update_around(&mut self, x: usize, y: usize) -> [bool; 8] {
         let mut is_updated: [bool; 8] = [true; 8];
-        let mut X;
-        let mut Y;
+        let mut xx;
+        let mut yy;
         for r in 0..8 {
             if 0 <= x as i32 + self.tiles_prop[0].conditions[r].rel.0
                 && x as i32 + self.tiles_prop[0].conditions[r].rel.0 < self.x_size as i32
@@ -272,10 +279,10 @@ impl Wave {
                         suppos.or(&self.tiles_prop[i].conditions[r].sup);
                     }
                 }
-                X = (x as i32 + self.tiles_prop[0].conditions[r].rel.0) as usize;
-                Y = (y as i32 + self.tiles_prop[0].conditions[r].rel.1) as usize;
-                is_updated[r] = self.tiles[X][Y].sup.contains(&suppos);
-                self.tiles[X][Y].sup.and(&suppos);
+                xx = (x as i32 + self.tiles_prop[0].conditions[r].rel.0) as usize;
+                yy = (y as i32 + self.tiles_prop[0].conditions[r].rel.1) as usize;
+                is_updated[r] = self.tiles[xx][yy].sup.contains(&suppos);
+                self.tiles[xx][yy].sup.and(&suppos);
             }
         }
         is_updated
