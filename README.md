@@ -15,7 +15,7 @@ It's a wave function collapse algorithm implementation using rust. There ate 3 d
 2. You can use simple-input and change `data/simple-input.txt`. It uses gates system. You have different connections between your tiles. If tiles can connect with each other you should write the same digit (gate type) for them to connect. Tiles are rotated, so you should specify each texture onle once with gates in format:
    path_to_texture gates in directions up,left,right,down.
 
-3. You also can use graphical editor, to make a sample and then turn them into the actual data. 
+3. You also can use graphical editor, to make a sample and then turn them into the actual data. Use `cargo run --bin map-to-data`
    
    Controls are:
    
