@@ -10,7 +10,7 @@ name = "wfc-generator"
 name = "simple-input"
 
 [[bin]]
-name = "load-backup"
+name = "map-to-data"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

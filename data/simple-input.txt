@@ -1,0 +1,2 @@
+textures/T_tube.png 0 1 1 1
+textures/empty.png 0 0 0 0

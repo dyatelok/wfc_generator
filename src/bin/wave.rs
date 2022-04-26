@@ -53,6 +53,9 @@ impl TileProp {
 }
 
 fn string_to_vec_of_usize(s: &String) -> Vec<usize> {
+    if s.len() == 0 {
+        return vec![];
+    }
     s.split(' ')
         .into_iter()
         .map(|s| match s.parse::<usize>() {
@@ -63,7 +66,7 @@ fn string_to_vec_of_usize(s: &String) -> Vec<usize> {
 }
 
 fn read_file() -> (Vec<TileProp>, Vec<(String, usize)>) {
-    let data: String = fs::read_to_string("tiles-data.txt").expect("Unable to read file");
+    let data: String = fs::read_to_string("data/tiles-data.txt").expect("Unable to read file");
     let strings = data.split('\n');
     let strings = strings.collect::<Vec<&str>>();
     let strings = strings
@@ -185,10 +188,15 @@ impl Tile {
     }
 }
 
+#[derive(Clone)]
 struct WaveCopy {
     tiles: Vec<Vec<Tile>>,
+    l_obs_x: usize,
+    l_obs_y: usize,
+    l_obs_t: usize,
 }
 
+#[derive(Clone)]
 pub struct Wave {
     x_size: usize,
     y_size: usize,
@@ -197,6 +205,9 @@ pub struct Wave {
     tiles_prop: Vec<TileProp>,
     stack: Vec<WaveCopy>,
     texture_ids: Vec<Vec<usize>>,
+    l_obs_x: usize,
+    l_obs_y: usize,
+    l_obs_t: usize,
 }
 
 impl Wave {
@@ -209,6 +220,9 @@ impl Wave {
             tiles_prop,
             stack: vec![],
             texture_ids: vec![vec!(0; x_size); y_size],
+            l_obs_x: 0,
+            l_obs_y: 0,
+            l_obs_t: 0,
         }
     }
     pub fn new_load(x_size: usize, y_size: usize) -> (Wave, Vec<(String, usize)>) {
@@ -221,10 +235,14 @@ impl Wave {
     }
     fn load(&mut self, copy: WaveCopy) {
         self.tiles = copy.tiles;
+        self.tiles[copy.l_obs_x][copy.l_obs_y].sup.cont[copy.l_obs_t] = false;
     }
     fn copy(&self) -> WaveCopy {
         WaveCopy {
             tiles: self.tiles.clone(),
+            l_obs_x: self.l_obs_x,
+            l_obs_y: self.l_obs_y,
+            l_obs_t: self.l_obs_t,
         }
     }
     fn set_ids(&mut self) {
@@ -403,14 +421,27 @@ impl Wave {
         return Some(posses[index]);
     }
     pub fn reveal(&mut self) {
+        let mut steps = 0;
         let mut rng = thread_rng();
         loop {
+            println!("steps: {}", steps);
+            steps += 1;
             let stc = self.update_entropy();
+
+            for i in 0..self.x_size {
+                for j in 0..self.y_size {
+                    print!("{} ", self.tiles[i][j].ent.pos);
+                }
+                println!();
+            }
+            println!();
+
             if stc {
                 let pop = self.stack.pop();
                 match pop {
                     Some(pop) => {
                         self.load(pop);
+                        println!("loaded stack frame {}", self.stack.len());
                     }
                     None => {
                         panic!("No possible tilings");
@@ -418,9 +449,7 @@ impl Wave {
                 }
                 continue;
             }
-            self.stack.push(self.copy());
-            let obs = self.observe();
-            match obs {
+            match self.observe() {
                 Some((x, y)) => {
                     let mut typs = rng.gen_range(1..=self.tiles[x][y].ent.pos);
                     let mut typ: usize = 0;
@@ -434,6 +463,10 @@ impl Wave {
                         }
                         i += 1;
                     }
+                    self.stack.push(self.copy());
+                    self.l_obs_x = x;
+                    self.l_obs_y = y;
+                    self.l_obs_t = typ;
                     self.set_tile(x, y, typ);
                     self.update_from(x, y);
                 }

@@ -22,13 +22,16 @@ fn rot_to_yshift(rot: usize) -> f32 {
 }
 
 fn main() {
-    let x_size: usize = 30;
+    let x_size: usize = 16;
     let y_size: usize = x_size;
 
     let ww = wave::Wave::new_load(x_size, y_size);
-    let mut wave = ww.0;
+    let mut wave = ww.0.clone();
     let textures_ref = ww.1;
+    println!("data loaded from file");
+    let timer = std::time::Instant::now();
     wave.reveal();
+    println!("time for generation: {}ms", timer.elapsed().as_millis());
 
     let (mut rl, thread) = raylib::init().size(900, 900).title("WCF").build();
 
@@ -43,9 +46,11 @@ fn main() {
     rl.set_target_fps(60);
     while !rl.window_should_close() {
         if rl.is_key_pressed(KeyboardKey::KEY_R) {
-            let ww = wave::Wave::new_load(x_size, y_size);
-            wave = ww.0;
+            //let ww = wave::Wave::new_load(x_size, y_size);
+            wave = ww.0.clone();
+            let timer = std::time::Instant::now();
             wave.reveal();
+            println!("time for generation: {}ms", timer.elapsed().as_millis());
         }
         let mut d = rl.begin_drawing(&thread);
         d.clear_background(Color::RED);

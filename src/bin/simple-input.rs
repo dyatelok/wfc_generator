@@ -15,7 +15,7 @@ fn parce_to_usize(s: &str) -> usize {
 }
 
 fn read_file() -> Vec<(usize, String, (usize, usize, usize, usize))> {
-    let data: String = fs::read_to_string("simple-input.txt").expect("Unable to read file");
+    let data: String = fs::read_to_string("data/simple-input.txt").expect("Unable to read file");
     let strings = data.split('\n');
     let strings = strings
         .collect::<Vec<&str>>()
@@ -177,16 +177,15 @@ fn to_tilesdata(tiles_prop: Vec<(usize, String, (usize, usize, usize, usize))>) 
         sst.push_str(diag_string);
         sst.push('\n');
     }
-    //println!("{}", sst);
-    //println!("{:?}", find_match(0, 0, &rot_set));
     sst
 }
 
 fn main() {
     let s = to_tilesdata(read_file());
 
-    let _ = remove_file("tiles-data.txt");
-    let mut file = File::create("tiles-data.txt").expect("Error encountered while creating file!");
+    let _ = remove_file("data/tiles-data.txt");
+    let mut file =
+        File::create("data/tiles-data.txt").expect("Error encountered while creating file!");
 
     file.write_all((&s[..]).as_bytes())
         .expect("Error while writing to file");
