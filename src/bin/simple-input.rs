@@ -20,7 +20,7 @@ fn read_file() -> Vec<(usize, String, (usize, usize, usize, usize))> {
     let strings = strings
         .collect::<Vec<&str>>()
         .into_iter()
-        .map(|s| String::from(s))
+        .map(String::from)
         .collect::<Vec<String>>();
 
     let tile_types: usize = strings.len() - 1;
@@ -28,8 +28,8 @@ fn read_file() -> Vec<(usize, String, (usize, usize, usize, usize))> {
     let mut tiles_prop: Vec<(usize, String, (usize, usize, usize, usize))> = vec![];
     let mut spl;
 
-    for i in 0..tile_types {
-        spl = strings[i].split(' ').collect::<Vec<&str>>();
+    for (i, item) in strings.iter().enumerate().take(tile_types) {
+        spl = item.split(' ').collect::<Vec<&str>>();
         tiles_prop.push((
             i,
             String::from(spl[0]),
@@ -119,8 +119,8 @@ fn find_match(
 
 fn usize_vec_to_string(w: Vec<usize>) -> String {
     let mut out = String::new();
-    for v in 0..w.len() - 1 {
-        out.push_str(&w[v].to_string()[..]);
+    for item in w.iter().take(w.len() - 1) {
+        out.push_str(&item.to_string()[..]);
         out.push(' ');
     }
     out.push_str(&w[w.len() - 1].to_string()[..]);
@@ -132,8 +132,8 @@ fn to_tilesdata(tiles_prop: Vec<(usize, String, (usize, usize, usize, usize))>) 
     let mut hash_set: HashSet<(usize, String, (usize, usize, usize, usize))> = HashSet::new();
     let mut rot_set: Vec<(usize, String, usize, (usize, usize, usize, usize))> = vec![];
     let mut tep;
-    for i in 0..tiles_prop.len() {
-        tep = tiles_prop[i].clone();
+    for item in &tiles_prop {
+        tep = item.clone();
         hash_set.insert(tep.clone());
         tep = rot(tep);
         hash_set.insert(tep.clone());
@@ -147,9 +147,9 @@ fn to_tilesdata(tiles_prop: Vec<(usize, String, (usize, usize, usize, usize))>) 
     }
     let tile_types: usize = rot_set.len();
 
-    for r in 0..tile_types {
-        set_id(&mut rot_set[r], r);
-        println!("{:?}", rot_set[r]);
+    for (r, item) in rot_set.iter_mut().enumerate().take(tile_types) {
+        set_id(item, r);
+        println!("{:?}", item);
     }
 
     let mut diag: Vec<usize> = vec![];
@@ -187,6 +187,6 @@ fn main() {
     let mut file =
         File::create("data/tiles-data.txt").expect("Error encountered while creating file!");
 
-    file.write_all((&s[..]).as_bytes())
+    file.write_all(s[..].as_bytes())
         .expect("Error while writing to file");
 }

@@ -23,7 +23,7 @@ impl TileProp {
         TileProp { conditions: vec![] }
     }
     fn from(
-        rels: Vec<Vec<usize>>, //8 списков возможных соседей клетки в направлениях
+        rels: Vec<Vec<usize>>,
         //(-1,-1) ( 0,-1) ( 1,-1)
         //(-1, 0)         ( 1, 0)
         //(-1, 1) ( 0, 1) ( 1, 1)
@@ -53,11 +53,10 @@ impl TileProp {
 }
 
 fn string_to_vec_of_usize(s: &String) -> Vec<usize> {
-    if s.len() == 0 {
+    if s.is_empty() {
         return vec![];
     }
     s.split(' ')
-        .into_iter()
         .map(|s| match s.parse::<usize>() {
             Ok(a) => a,
             Err(_) => panic!("failed to parce file"),
@@ -71,7 +70,7 @@ fn read_file() -> (Vec<TileProp>, Vec<(String, usize)>) {
     let strings = strings.collect::<Vec<&str>>();
     let strings = strings
         .into_iter()
-        .map(|s| String::from(s))
+        .map(String::from)
         .collect::<Vec<String>>();
 
     let tile_types: usize = strings.len() / 11;
@@ -83,7 +82,7 @@ fn read_file() -> (Vec<TileProp>, Vec<(String, usize)>) {
     let mut textures_ref: Vec<(String, usize)> = vec![];
     let mut rels: Vec<Vec<usize>>;
     for v in 0..tile_types {
-        let _ = match (&strings[v * 11][..]).parse::<usize>() {
+        let _ = match strings[v * 11][..].parse::<usize>() {
             Ok(a) => a,
             Err(_) => panic!("failed to parce file"),
         };
@@ -144,7 +143,7 @@ impl SuperPos {
     }
     fn contains(&self, obj: &SuperPos) -> bool {
         for i in 0..self.cont.len() {
-            if self.cont[i] == true && obj.cont[i] == false {
+            if self.cont[i] && !obj.cont[i] {
                 return false;
             }
         }
@@ -249,7 +248,7 @@ impl Wave {
         for i in 0..self.x_size {
             for j in 0..self.y_size {
                 for k in 0..self.tile_types {
-                    if self.tiles[i][j].sup.cont[k] == true {
+                    if self.tiles[i][j].sup.cont[k] {
                         self.texture_ids[i][j] = k;
                         break;
                     }
@@ -285,7 +284,7 @@ impl Wave {
         let mut is_updated: [bool; 8] = [true; 8];
         let mut xx;
         let mut yy;
-        for r in 0..8 {
+        for (r, item) in is_updated.iter_mut().enumerate() {
             if 0 <= x as i32 + self.tiles_prop[0].conditions[r].rel.0
                 && x as i32 + self.tiles_prop[0].conditions[r].rel.0 < self.x_size as i32
                 && 0 <= y as i32 + self.tiles_prop[0].conditions[r].rel.1
@@ -293,13 +292,13 @@ impl Wave {
             {
                 let mut suppos = SuperPos::fs(self.tile_types);
                 for i in 0..self.tile_types {
-                    if self.tiles[x][y].sup.cont[i] == true {
+                    if self.tiles[x][y].sup.cont[i] {
                         suppos.or(&self.tiles_prop[i].conditions[r].sup);
                     }
                 }
                 xx = (x as i32 + self.tiles_prop[0].conditions[r].rel.0) as usize;
                 yy = (y as i32 + self.tiles_prop[0].conditions[r].rel.1) as usize;
-                is_updated[r] = self.tiles[xx][yy].sup.contains(&suppos);
+                *item = self.tiles[xx][yy].sup.contains(&suppos);
                 self.tiles[xx][yy].sup.and(&suppos);
             }
         }
@@ -321,45 +320,29 @@ impl Wave {
         }
         for i in 0..self.x_size {
             for j in 0..self.y_size {
-                if i as i32 - 1 >= 0 {
-                    if self.tiles[i - 1][j].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if i as i32 > 0 && self.tiles[i - 1][j].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
-                if i + 1 < self.x_size {
-                    if self.tiles[i + 1][j].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if i + 1 < self.x_size && self.tiles[i + 1][j].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
-                if j as i32 - 1 >= 0 {
-                    if self.tiles[i][j - 1].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if j as i32 > 0 && self.tiles[i][j - 1].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
-                if j + 1 < self.y_size {
-                    if self.tiles[i][j + 1].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if j + 1 < self.y_size && self.tiles[i][j + 1].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
-                if i as i32 - 1 >= 0 && j as i32 - 1 >= 0 {
-                    if self.tiles[i - 1][j].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if i as i32 > 0 && j as i32 > 0 && self.tiles[i - 1][j].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
-                if i + 1 < self.x_size && j + 1 < self.y_size {
-                    if self.tiles[i + 1][j].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if i + 1 < self.x_size && j + 1 < self.y_size && self.tiles[i + 1][j].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
-                if i + 1 < self.x_size && j as i32 - 1 >= 0 {
-                    if self.tiles[i][j - 1].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if i + 1 < self.x_size && j as i32 > 0 && self.tiles[i][j - 1].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
-                if i as i32 - 1 >= 0 && j + 1 < self.y_size {
-                    if self.tiles[i][j + 1].ent.pos != 1 {
-                        self.tiles[i][j].ent.unrev += 1;
-                    }
+                if i as i32 > 0 && j + 1 < self.y_size && self.tiles[i][j + 1].ent.pos != 1 {
+                    self.tiles[i][j].ent.unrev += 1;
                 }
             }
         }
@@ -403,10 +386,8 @@ impl Wave {
                 if self.tiles[i][j].ent < sample && !self.tiles[i][j].ent.is_obs() {
                     sample = self.tiles[i][j].ent;
                     posses = vec![(i, j)];
-                } else {
-                    if self.tiles[i][j].ent == sample {
-                        posses.push((i, j));
-                    }
+                } else if self.tiles[i][j].ent == sample {
+                    posses.push((i, j));
                 }
             }
         }
@@ -418,7 +399,7 @@ impl Wave {
         let mut rng = thread_rng();
         let index: usize = rng.gen_range(0..posses.len());
 
-        return Some(posses[index]);
+        Some(posses[index])
     }
     pub fn reveal(&mut self) {
         let mut steps = 0;

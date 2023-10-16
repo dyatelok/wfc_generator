@@ -1,4 +1,3 @@
-mod wave;
 use raylib::prelude::*;
 
 fn rot_to_xshift(rot: usize) -> f32 {
@@ -25,7 +24,7 @@ fn main() {
     let x_size: usize = 16;
     let y_size: usize = x_size;
 
-    let ww = wave::Wave::new_load(x_size, y_size);
+    let ww = wfc::wave::Wave::new_load(x_size, y_size);
     let mut wave = ww.0.clone();
     let textures_ref = ww.1;
     println!("data loaded from file");
@@ -36,11 +35,11 @@ fn main() {
     let (mut rl, thread) = raylib::init().size(900, 900).title("WCF").build();
 
     let mut textures: Vec<(Texture2D, usize)> = vec![];
-    for t in 0..textures_ref.len() {
+    for item in textures_ref.into_iter() {
         let empty = rl
-            .load_texture(&thread, &(textures_ref[t].0)[..])
+            .load_texture(&thread, &(item.0)[..])
             .expect("could not load texture billboard");
-        textures.push((empty, textures_ref[t].1));
+        textures.push((empty, item.1));
     }
 
     rl.set_target_fps(60);

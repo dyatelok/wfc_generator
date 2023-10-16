@@ -3,37 +3,11 @@ use std::collections::HashSet;
 use std::fs::{remove_file, File};
 use std::io::prelude::*;
 
-// Изначально задано, что размер семпла - 16 на 16
-// Проходимся по всем квадратам 3 на 3 (массив 3 на 3 из u8), добавляем их в хешсет
-// преврящаем данный хешсет в вектор с нумероваными типами тайлов
-// для каждой пары тайлов проверяем, могут ли они сходиться в определенном направлении и если так, то добавляем их к данному тайлу в возможные соседи
-// записываем в файл эти данные с текстурами, отвечающими
-// 0    0   0   0 черный
-// 1  128   0   0 темно красный
-// 2  255   0   0 красный
-// 3  255   0 255 розовый
-// 4    0 128 128 teal
-// 5    0 128   0 заленый
-// 6    0 255   0 светло-зеленый
-// 7    0 255 255 светло-голубой
-// 8    0   0 128 темно-синий
-// 9  128   0 128 фиолетовый
-// A    0   0 255 синий
-// B  192 192 192 серый 0.25
-// C  128 128 128 серый 0.5
-// D  128 128   0 темно-желтый
-// E  255   0 255 желтый
-// F  255 255 255 белый
-
-// [ 0, 0] [ 0, 1] [ 0, 2]
-// [ 1, 0] [ 1, 1] [ 1, 2]
-// [ 2, 0] [ 2, 1] [ 2, 2]
-
 fn usize_vec_to_string(w: Vec<usize>) -> String {
     let mut out = String::new();
-    if w.len() != 0 {
-        for v in 0..w.len() - 1 {
-            out.push_str(&w[v].to_string()[..]);
+    if !w.is_empty() {
+        for v in w.iter().take(w.len() - 1) {
+            out.push_str(&w[*v].to_string()[..]);
             out.push(' ');
         }
         out.push_str(&w[w.len() - 1].to_string()[..]);
@@ -59,31 +33,31 @@ fn to_offset(rel: usize) -> (i32, i32) {
 fn offset_eq(offset: (i32, i32), e: [[usize; 3]; 3], c: [[usize; 3]; 3]) -> bool {
     for o1 in 0..=2 {
         for o2 in 0..=2 {
-            if 0 <= o1 + offset.0 && o1 + offset.0 < 3 && 0 <= o2 + offset.1 && o2 + offset.1 < 3 {
-                if e[o1 as usize][o2 as usize]
+            if 0 <= o1 + offset.0
+                && o1 + offset.0 < 3
+                && 0 <= o2 + offset.1
+                && o2 + offset.1 < 3
+                && e[o1 as usize][o2 as usize]
                     != c[(o1 + offset.0) as usize][(o2 + offset.1) as usize]
-                {
-                    return false;
-                }
+            {
+                return false;
             }
         }
     }
     true
 }
 
-fn find_match(i: usize, rel: usize, elems: &Vec<(usize, [[usize; 3]; 3])>) -> Vec<usize> {
-    //Ищем совпадающие тайлы по оффсету, заносим в соответствуюши
+fn find_match(i: usize, rel: usize, elems: &[(usize, [[usize; 3]; 3])]) -> Vec<usize> {
     let e = elems[i].1;
     let off = to_offset(rel);
     let mut ans: Vec<usize> = vec![];
 
-    for i in 0..elems.len() {
-        if offset_eq(off, elems[i].1, e) {
+    for (i, elem) in elems.iter().enumerate() {
+        if offset_eq(off, elem.1, e) {
             ans.push(i);
         }
     }
-
-    return ans;
+    ans
 }
 
 fn as_path(s: usize) -> String {
@@ -93,7 +67,7 @@ fn as_path(s: usize) -> String {
     st
 }
 
-fn string_from_buffer(x_size: usize, y_size: usize, buff: &Vec<Vec<usize>>) -> String {
+fn string_from_buffer(x_size: usize, y_size: usize, buff: &[Vec<usize>]) -> String {
     let mut elems: HashSet<[[usize; 3]; 3]> = HashSet::new();
     let mut elem: [[usize; 3]; 3] = [[0; 3]; 3];
     for i in 1..x_size - 1 {
@@ -108,14 +82,12 @@ fn string_from_buffer(x_size: usize, y_size: usize, buff: &Vec<Vec<usize>>) -> S
     }
     let mut num_elems: Vec<(usize, [[usize; 3]; 3])> = vec![];
 
-    let mut t = 0;
-    for e in elems {
+    for (t, e) in elems.iter().enumerate() {
         println!("{}", t);
         println!("{:?}", e[0]);
         println!("{:?}", e[1]);
         println!("{:?}\n", e[2]);
-        num_elems.push((t, e));
-        t += 1;
+        num_elems.push((t, *e));
     }
 
     let tile_types = num_elems.len();
@@ -193,8 +165,8 @@ fn main() {
 
     while !rl.window_should_close() {
         t = (t + 1) % 60;
-        match rl.get_key_pressed() {
-            Some(key) => match key {
+        if let Some(key) = rl.get_key_pressed() {
+            match key {
                 KeyboardKey::KEY_UP => {
                     cursor_y = (cursor_y - 1).max(0);
                 }
@@ -212,14 +184,12 @@ fn main() {
                         for i in block_s_x..=block_e_x {
                             for j in block_s_y..=block_e_y {
                                 buffer[i as usize][j as usize] += 1;
-                                buffer[i as usize][j as usize] =
-                                    buffer[i as usize][j as usize] % 16;
+                                buffer[i as usize][j as usize] %= 16;
                             }
                         }
                     } else {
                         buffer[cursor_x as usize][cursor_y as usize] += 1;
-                        buffer[cursor_x as usize][cursor_y as usize] =
-                            buffer[cursor_x as usize][cursor_y as usize] % 16;
+                        buffer[cursor_x as usize][cursor_y as usize] %= 16;
                     }
                 }
                 KeyboardKey::KEY_Y => {
@@ -247,7 +217,7 @@ fn main() {
                     let _ = remove_file("data/map.txt");
                     let mut file = File::create("data/map.txt")
                         .expect("Error encountered while creating file!");
-                    file.write_all((&s[..]).as_bytes())
+                    file.write_all(s[..].as_bytes())
                         .expect("Error while writing to file");
                 }
                 KeyboardKey::KEY_L => {
@@ -263,7 +233,7 @@ fn main() {
                 KeyboardKey::KEY_V => {
                     //Перейти в режим выделения/выйти
                     vis_mode = !vis_mode;
-                    if vis_mode == true {
+                    if vis_mode {
                         base_x = cursor_x;
                         base_y = cursor_y;
                     }
@@ -275,13 +245,12 @@ fn main() {
                     let _ = remove_file("data/tiles-data.txt");
                     let mut file = File::create("data/tiles-data.txt")
                         .expect("Error encountered while creating file!");
-                    file.write_all((&s[..]).as_bytes())
+                    file.write_all(s[..].as_bytes())
                         .expect("Error while writing to file");
                     println!("burref transformed to tiles-data");
                 }
                 _ => {}
-            },
-            None => {}
+            }
         }
 
         let mut d = rl.begin_drawing(&thread);
