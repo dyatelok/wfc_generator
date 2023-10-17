@@ -2,7 +2,13 @@
 
 # Wave function collapse algorithm
 
-It's a wave function collapse algorithm implementation using rust. There ate 3 different input options. To run use `cargo run --release --bin wfc-generator`
+It's a wave function collapse algorithm implementation written rust. There are 3 different input options.
+Example bitmap:
+![image](https://github.com/dyatelok/wfc_generator/assets/92210438/a1335efb-f0a6-40be-9375-66747e619f5f)
+Produced bitmaps:
+![image](https://github.com/dyatelok/wfc_generator/assets/92210438/6d9edc6a-ae63-4d55-a72f-04d1505cf194)
+![image](https://github.com/dyatelok/wfc_generator/assets/92210438/2f803d06-7099-4d62-a16a-fe2b8ef7aa6d)
+
 
 1. You can use manual input and specify, what kinds of tiles can be near in different directions to each other. You should change the `data/tiles-data.txt` file. The format is:
    
@@ -16,7 +22,9 @@ It's a wave function collapse algorithm implementation using rust. There ate 3 d
    path_to_texture gates in directions up,left,right,down.
 
 3. You also can use graphical editor, to make a sample and then turn them into the actual data. Use `cargo run --release --bin map-to-data`
-   
+   ![image](https://github.com/dyatelok/wfc_generator/assets/92210438/92d09b6d-836f-479d-9a7c-116550d24126)
+   ![image](https://github.com/dyatelok/wfc_generator/assets/92210438/1ae505a7-db7c-4288-a134-912d43afa8b7)
+
    Controls are:
    
    arrows -> cursor moving
