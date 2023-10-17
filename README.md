@@ -2,7 +2,7 @@
 
 # Wave function collapse algorithm
 
-It's a wave function collapse algorithm implementation written rust. There are 3 different input options.
+It's a wave function collapse algorithm implementation written inrust. There are 3 different input options. To run app use ```cargo run --release --wfc-generator```
 Example bitmap:
 ![image](https://github.com/dyatelok/wfc_generator/assets/92210438/a1335efb-f0a6-40be-9375-66747e619f5f)
 Produced bitmaps:
